@@ -1,4 +1,4 @@
-const CACHE = 'break-meter-v1';
+const CACHE = 'break-meter-v2';
 const ASSETS = ['./', 'index.html', 'app.js', 'style.css', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', (e) => {

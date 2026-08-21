@@ -145,6 +145,28 @@ if (typeof document !== 'undefined') {
     localStorage.setItem('cue', JSON.stringify(cue));
     renderCue();
   }
+  // Rail break: cue ball a ball's width off the cushion, so its center sits
+  // one diameter + one radius (3.375") from the rail. Box break: the break
+  // box edge is where the line from each head-rail first diamond (±width/4)
+  // to the foot spot crosses the head string — ±width/6, the middle third.
+  // "Edge of the box" puts the ball just inside (center one radius in).
+  const RAIL_INSET_IN = BALL_D_IN * 1.5;
+  document.querySelectorAll('#cue-presets button').forEach((b) =>
+    b.addEventListener('click', () => {
+      const w = TABLES[tableSel.value].width;
+      cue = {
+        fx: {
+          left: RAIL_INSET_IN / w,
+          'box-left': 1 / 3 + (BALL_D_IN / 2) / w,
+          center: 0.5,
+          'box-right': 2 / 3 - (BALL_D_IN / 2) / w,
+          right: 1 - RAIL_INSET_IN / w,
+        }[b.dataset.pos],
+        fy: 0,
+      };
+      localStorage.setItem('cue', JSON.stringify(cue));
+      renderCue();
+    }));
   kitchen.addEventListener('pointerdown', moveCue);
   kitchen.addEventListener('pointermove', (e) => { if (e.buttons) moveCue(e); });
   tableSel.addEventListener('change', () => { localStorage.setItem('table', tableSel.value); renderCue(); });
