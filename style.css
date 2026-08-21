@@ -17,11 +17,20 @@ body {
   display: grid;
   place-items: center;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior-y: none;
 }
+
+button, select { touch-action: manipulation; }
 
 main {
   width: min(28rem, 100%);
   padding: 1.5rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top));
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  padding-left: calc(1.5rem + env(safe-area-inset-left));
+  padding-right: calc(1.5rem + env(safe-area-inset-right));
   text-align: center;
   display: grid;
   gap: 1.25rem;
@@ -95,6 +104,7 @@ select {
 #cue-presets {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -182,3 +192,14 @@ select {
 }
 
 #breaks li:first-child { color: var(--fg); }
+
+#repo {
+  color: var(--dim);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+@media (max-width: 380px) {
+  #speed { font-size: 2.75rem; }
+  #readout { padding: 1.25rem 0.75rem; }
+}
