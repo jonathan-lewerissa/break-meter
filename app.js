@@ -36,9 +36,16 @@ class PeakTimer {
   }
 }
 
+// m/s → unit conversion factors
+const UNITS = {
+  mph: { factor: 2.23694, label: 'mph' },
+  kmh: { factor: 3.6, label: 'km/h' },
+  ms:  { factor: 1, label: 'm/s' },
+  fps: { factor: 3.28084, label: 'ft/s' },
+};
+
 function speedFromGap(gapS, distanceM) {
-  const ms = distanceM / gapS;
-  return { ms, mph: ms * 2.23694, kmh: ms * 3.6 };
+  return distanceM / gapS; // m/s
 }
 
 if (typeof document !== 'undefined') {
@@ -47,6 +54,21 @@ if (typeof document !== 'undefined') {
   const speedAltEl = document.getElementById('speed-alt');
   const statusEl = document.getElementById('status');
   const tableSel = document.getElementById('table-size');
+  const unitSel = document.getElementById('unit');
+
+  let lastResult = null; // { speedMs, gap }
+  unitSel.value = localStorage.getItem('unit') || 'mph';
+  unitSel.addEventListener('change', () => {
+    localStorage.setItem('unit', unitSel.value);
+    render();
+  });
+
+  function render() {
+    if (!lastResult) return;
+    const { factor, label } = UNITS[unitSel.value];
+    speedEl.textContent = `${(lastResult.speedMs * factor).toFixed(1)} ${label}`;
+    speedAltEl.textContent = `${(lastResult.gap * 1000).toFixed(0)} ms`;
+  }
 
   let audioCtx = null;
   let stream = null;
@@ -97,9 +119,8 @@ if (typeof document !== 'undefined') {
     if (gap > MAX_GAP_S) { crackTime = t; return; } // too slow: that was noise, restart from here
     if (gap < MIN_GAP_S) return;                    // too fast: same impact still ringing
 
-    const { mph, kmh } = speedFromGap(gap, TABLE_DISTANCE_M[tableSel.value]);
-    speedEl.textContent = `${mph.toFixed(1)} mph`;
-    speedAltEl.textContent = `${kmh.toFixed(1)} km/h · ${(gap * 1000).toFixed(0)} ms`;
+    lastResult = { speedMs: speedFromGap(gap, TABLE_DISTANCE_M[tableSel.value]), gap };
+    render();
     statusEl.textContent = 'Nice break. Still listening…';
     crackTime = null;
   }
@@ -119,5 +140,5 @@ if (typeof document !== 'undefined') {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { PeakTimer, speedFromGap, TABLE_DISTANCE_M, MIN_GAP_S, MAX_GAP_S };
+  module.exports = { PeakTimer, speedFromGap, UNITS, TABLE_DISTANCE_M, MIN_GAP_S, MAX_GAP_S };
 }

@@ -14,14 +14,25 @@
   <main>
     <h1>Break Meter 🎱</h1>
 
-    <label class="table-size">
-      Table size
-      <select id="table-size">
-        <option value="7">7 ft (bar box)</option>
-        <option value="8">8 ft</option>
-        <option value="9" selected>9 ft</option>
-      </select>
-    </label>
+    <div class="options">
+      <label>
+        Table size
+        <select id="table-size">
+          <option value="7">7 ft (bar box)</option>
+          <option value="8">8 ft</option>
+          <option value="9" selected>9 ft</option>
+        </select>
+      </label>
+      <label>
+        Unit
+        <select id="unit">
+          <option value="mph" selected>mph</option>
+          <option value="kmh">km/h</option>
+          <option value="ms">m/s</option>
+          <option value="fps">ft/s</option>
+        </select>
+      </label>
+    </div>
 
     <div id="readout">
       <div id="speed">—</div>

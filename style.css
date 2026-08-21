@@ -29,11 +29,16 @@ main {
 
 h1 { font-size: 1.4rem; font-weight: 600; }
 
-.table-size {
+.options {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.options label {
   color: var(--dim);
   font-size: 0.9rem;
   display: flex;
-  justify-content: center;
   align-items: center;
   gap: 0.5rem;
 }
