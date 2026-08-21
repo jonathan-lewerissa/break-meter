@@ -32,7 +32,8 @@ h1 { font-size: 1.4rem; font-weight: 600; }
 .options {
   display: flex;
   justify-content: center;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
 }
 
 .options label {
@@ -50,6 +51,34 @@ select {
   border-radius: 0.5rem;
   padding: 0.4rem 0.6rem;
   font-size: 1rem;
+}
+
+#kitchen {
+  aspect-ratio: 2 / 1; /* kitchen is width × length/4 — 2:1 on every table size */
+  background: #1b3a2a;
+  border: 3px solid #4a3421;
+  border-top: 2px dashed var(--dim); /* the head string */
+  border-radius: 0 0 0.5rem 0.5rem;
+  position: relative;
+  touch-action: none;
+  cursor: pointer;
+}
+
+#cueball {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.kitchen-hint {
+  color: var(--dim);
+  font-size: 0.8rem;
+  margin: 0.3rem 0;
 }
 
 #readout {

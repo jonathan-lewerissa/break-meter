@@ -2,8 +2,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const {
-  PeakTimer, GapFinder, speedFromGap, addBreak, bestBreak,
-  UNITS, TABLE_DISTANCE_M, MIN_GAP_S, MAX_GAP_S,
+  PeakTimer, GapFinder, speedFromGap, breakDistanceM, addBreak, bestBreak,
+  UNITS, TABLES, RACK_APEX_OFFSET_IN, BALL_D_M, IN_TO_M, MIN_GAP_S, MAX_GAP_S,
 } = require('./app.js');
 
 const SR = 48000;
@@ -73,12 +73,42 @@ test('GapFinder restarts when the second peak is too late', () => {
   assert.ok(Math.abs(f.feed(1.0 + MAX_GAP_S + 0.3) - 0.2) < 1e-9);
 });
 
-test('speed math: 9ft table, 200ms gap ≈ 14.2 mph / 22.9 km/h', () => {
-  const ms = speedFromGap(0.2, TABLE_DISTANCE_M[9]);
-  assert.ok(Math.abs(ms - 6.35) < 1e-9);
-  assert.ok(Math.abs(ms * UNITS.mph.factor - 14.2) < 0.1);
-  assert.ok(Math.abs(ms * UNITS.kmh.factor - 22.9) < 0.1);
-  assert.ok(Math.abs(ms * UNITS.fps.factor - 20.8) < 0.1);
+test('breakDistanceM: center of head string = length/2 minus one ball', () => {
+  // 9ft: 50" straight line, minus 2.25" ball diameter
+  assert.ok(Math.abs(breakDistanceM(9) - (50 * IN_TO_M - BALL_D_M)) < 1e-9);
+  assert.ok(Math.abs(breakDistanceM(7) - (39 * IN_TO_M - BALL_D_M)) < 1e-9);
+});
+
+test('breakDistanceM: side-rail break is the hypotenuse', () => {
+  // full left on a 9ft: x=25", d=50" → √3125 ≈ 55.902"
+  const expected = Math.hypot(25, 50) * IN_TO_M - BALL_D_M;
+  assert.ok(Math.abs(breakDistanceM(9, 0) - expected) < 1e-9);
+  // symmetric: full right gives the same distance
+  assert.ok(Math.abs(breakDistanceM(9, 1) - breakDistanceM(9, 0)) < 1e-12);
+});
+
+test('breakDistanceM: cue ball deep in the kitchen adds length/4', () => {
+  // back rail on a 9ft: d = 50 + 25 = 75"
+  assert.ok(Math.abs(breakDistanceM(9, 0.5, 1) - (75 * IN_TO_M - BALL_D_M)) < 1e-9);
+});
+
+test('rack offsets: only 9-on-spot moves the apex, by 2 rows', () => {
+  assert.strictEqual(RACK_APEX_OFFSET_IN['8ball'], 0);
+  assert.strictEqual(RACK_APEX_OFFSET_IN['9ball-1'], 0);
+  assert.strictEqual(RACK_APEX_OFFSET_IN['10ball'], 0);
+  // 2 rows × 2.25" × √3/2 ≈ 3.897"
+  assert.ok(Math.abs(RACK_APEX_OFFSET_IN['9ball-9'] - 3.897) < 0.001);
+  // shortens a 9ft center break from 50" to ~46.1" of longitudinal distance
+  const expected = (50 - RACK_APEX_OFFSET_IN['9ball-9']) * IN_TO_M - BALL_D_M;
+  assert.ok(Math.abs(breakDistanceM(9, 0.5, 0, RACK_APEX_OFFSET_IN['9ball-9']) - expected) < 1e-9);
+});
+
+test('speed math: 9ft center break, 200ms gap ≈ 13.6 mph', () => {
+  const ms = speedFromGap(0.2, breakDistanceM(9));
+  assert.ok(Math.abs(ms - 6.06425) < 1e-5);
+  assert.ok(Math.abs(ms * UNITS.mph.factor - 13.6) < 0.1);
+  assert.ok(Math.abs(ms * UNITS.kmh.factor - 21.8) < 0.1);
+  assert.ok(Math.abs(ms * UNITS.fps.factor - 19.9) < 0.1);
 });
 
 test('addBreak prepends and caps the list', () => {

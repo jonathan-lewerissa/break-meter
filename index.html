@@ -24,6 +24,15 @@
         </select>
       </label>
       <label>
+        Game
+        <select id="rack">
+          <option value="9ball-1" selected>9-ball (1 on spot)</option>
+          <option value="9ball-9">9-ball (9 on spot)</option>
+          <option value="8ball">8-ball</option>
+          <option value="10ball">10-ball</option>
+        </select>
+      </label>
+      <label>
         Unit
         <select id="unit">
           <option value="mph" selected>mph</option>
@@ -32,6 +41,12 @@
           <option value="fps">ft/s</option>
         </select>
       </label>
+    </div>
+
+    <div id="kitchen-wrap">
+      <div class="kitchen-hint">▲ rack — drag the cue ball to your break spot</div>
+      <div id="kitchen"><div id="cueball"></div></div>
+      <div id="kitchen-dist" class="kitchen-hint"></div>
     </div>
 
     <div id="readout">

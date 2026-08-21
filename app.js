@@ -1,10 +1,36 @@
 'use strict';
 
-// Head string → foot spot (rack apex): half the playing-surface length.
-// 9ft = 50", 8ft = 46", 7ft = 39".
-const TABLE_DISTANCE_M = { 7: 0.9906, 8: 1.1684, 9: 1.27 };
+// WPA playing surfaces, inches. Foot spot (rack apex) sits length/2 from the
+// head string; the kitchen is length/4 deep — width:depth is 2:1 on every size.
+const TABLES = {
+  7: { length: 78, width: 39 },
+  8: { length: 92, width: 46 },
+  9: { length: 100, width: 50 },
+};
 
-// ponytail: fixed amplitude threshold; make adaptive if noisy pool halls prove it wrong
+const IN_TO_M = 0.0254;
+const BALL_D_IN = 2.25;
+const BALL_D_M = BALL_D_IN * IN_TO_M; // cue ball stops one diameter short of the apex center
+
+// How far the apex ball sits ahead of the foot spot, per rack. Racking 9-ball
+// with the 9 on the spot puts the apex 2 rows (2 × 2.25" × √3/2) closer.
+const RACK_APEX_OFFSET_IN = {
+  '8ball': 0,
+  '9ball-1': 0,
+  '9ball-9': BALL_D_IN * Math.sqrt(3),
+  '10ball': 0,
+};
+
+// Cue-ball travel distance in meters. fx: 0..1 across the kitchen (0.5 =
+// center), fy: 0..1 from head string back to head rail. Ignores the 1.125"
+// cushion inset at the edges (<1% error).
+function breakDistanceM(size, fx = 0.5, fy = 0, apexOffsetIn = 0) {
+  const t = TABLES[size];
+  const x = (fx - 0.5) * t.width;
+  const d = t.length / 2 - apexOffsetIn + fy * (t.length / 4);
+  return Math.hypot(x, d) * IN_TO_M - BALL_D_M;
+}
+
 const THRESHOLD = 0.35;
 const REFRACTORY_S = 0.03; // loud samples extend this, so ringing doesn't double-count
 const MIN_GAP_S = 0.05;    // faster than ~40 mph on a 7-footer = noise
@@ -77,6 +103,10 @@ if (typeof document !== 'undefined') {
   const statusEl = document.getElementById('status');
   const tableSel = document.getElementById('table-size');
   const unitSel = document.getElementById('unit');
+  const rackSel = document.getElementById('rack');
+  const kitchen = document.getElementById('kitchen');
+  const cueEl = document.getElementById('cueball');
+  const kitchenDistEl = document.getElementById('kitchen-dist');
   const bestEl = document.getElementById('best');
   const breaksEl = document.getElementById('breaks');
   const wave = document.getElementById('wave');
@@ -91,6 +121,34 @@ if (typeof document !== 'undefined') {
     localStorage.setItem('unit', unitSel.value);
     render();
   });
+
+  let cue = { fx: 0.5, fy: 0 }; // default: center, on the head string
+  try { cue = JSON.parse(localStorage.getItem('cue')) || cue; } catch { /* corrupt: default */ }
+  if (RACK_APEX_OFFSET_IN[localStorage.getItem('rack')] !== undefined) rackSel.value = localStorage.getItem('rack');
+  if (TABLES[localStorage.getItem('table')]) tableSel.value = localStorage.getItem('table');
+
+  function currentDistance() {
+    return breakDistanceM(+tableSel.value, cue.fx, cue.fy, RACK_APEX_OFFSET_IN[rackSel.value]);
+  }
+
+  function renderCue() {
+    cueEl.style.left = `${cue.fx * 100}%`;
+    cueEl.style.top = `${cue.fy * 100}%`;
+    const m = currentDistance();
+    kitchenDistEl.textContent = `Cue → rack: ${(m / IN_TO_M).toFixed(0)}″ (${m.toFixed(2)} m)`;
+  }
+
+  function moveCue(e) {
+    const r = kitchen.getBoundingClientRect();
+    cue.fx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    cue.fy = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    localStorage.setItem('cue', JSON.stringify(cue));
+    renderCue();
+  }
+  kitchen.addEventListener('pointerdown', moveCue);
+  kitchen.addEventListener('pointermove', (e) => { if (e.buttons) moveCue(e); });
+  tableSel.addEventListener('change', () => { localStorage.setItem('table', tableSel.value); renderCue(); });
+  rackSel.addEventListener('change', () => { localStorage.setItem('rack', rackSel.value); renderCue(); });
 
   document.getElementById('clear').addEventListener('click', () => {
     if (!breaks.length || !confirm('Delete all saved breaks?')) return;
@@ -158,7 +216,7 @@ if (typeof document !== 'undefined') {
     analyser = audioCtx.createAnalyser();
     source.connect(analyser);
     drawWave();
-    // ponytail: deprecated ScriptProcessor; swap for an AudioWorklet if browsers drop it
+    // ScriptProcessor is deprecated but universal; swap for an AudioWorklet if browsers drop it
     const proc = audioCtx.createScriptProcessor(1024, 1, 1);
     const timer = new PeakTimer(audioCtx.sampleRate);
 
@@ -193,7 +251,7 @@ if (typeof document !== 'undefined') {
       if (finder.crackTime !== null) statusEl.textContent = 'Crack heard — waiting for the rack…';
       return;
     }
-    const speedMs = speedFromGap(gap, TABLE_DISTANCE_M[tableSel.value]);
+    const speedMs = speedFromGap(gap, currentDistance());
     breaks = addBreak(breaks, { t: Date.now(), speedMs, gap, table: +tableSel.value });
     localStorage.setItem('breaks', JSON.stringify(breaks));
     lastResult = { speedMs, gap };
@@ -209,6 +267,7 @@ if (typeof document !== 'undefined') {
   });
 
   render();
+  renderCue();
 
   document.addEventListener('visibilitychange', async () => {
     if (audioCtx && document.visibilityState === 'visible') {
@@ -218,5 +277,5 @@ if (typeof document !== 'undefined') {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { PeakTimer, GapFinder, speedFromGap, addBreak, bestBreak, UNITS, TABLE_DISTANCE_M, MIN_GAP_S, MAX_GAP_S };
+  module.exports = { PeakTimer, GapFinder, speedFromGap, breakDistanceM, addBreak, bestBreak, UNITS, TABLES, RACK_APEX_OFFSET_IN, BALL_D_M, IN_TO_M, MIN_GAP_S, MAX_GAP_S };
 }
