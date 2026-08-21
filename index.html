@@ -37,10 +37,19 @@
     <div id="readout">
       <div id="speed">—</div>
       <div id="speed-alt"></div>
+      <canvas id="wave" width="600" height="80"></canvas>
     </div>
 
     <button id="arm">ARM</button>
     <p id="status">Tap ARM, then break. Mic stays local — nothing is recorded.</p>
+
+    <section id="history">
+      <div id="history-head">
+        <span id="best"></span>
+        <button id="clear">Clear</button>
+      </div>
+      <ol id="breaks"></ol>
+    </section>
   </main>
 
   <script src="app.js"></script>
