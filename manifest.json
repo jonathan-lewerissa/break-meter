@@ -1,0 +1,12 @@
+{
+  "name": "Break Meter",
+  "short_name": "BreakMeter",
+  "description": "Measure billiards break speed with your phone's microphone.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111418",
+  "theme_color": "#111418",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

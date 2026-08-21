@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111418">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Break Meter 🎱</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>Break Meter 🎱</h1>
+
+    <label class="table-size">
+      Table size
+      <select id="table-size">
+        <option value="7">7 ft (bar box)</option>
+        <option value="8">8 ft</option>
+        <option value="9" selected>9 ft</option>
+      </select>
+    </label>
+
+    <div id="readout">
+      <div id="speed">—</div>
+      <div id="speed-alt"></div>
+    </div>
+
+    <button id="arm">ARM</button>
+    <p id="status">Tap ARM, then break. Mic stays local — nothing is recorded.</p>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
