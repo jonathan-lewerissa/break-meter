@@ -205,6 +205,23 @@ if (typeof document !== 'undefined') {
   let analyser = null;
   const finder = new GapFinder();
 
+  // PeakTimer runs on the audio thread: a ScriptProcessor on the main thread
+  // drops blocks when the UI stalls, and every dropped block skews later
+  // timestamps by the block length. Built from source so tests keep importing
+  // the same class and the SW has one less file to cache.
+  const WORKLET_URL = URL.createObjectURL(new Blob([`
+    const THRESHOLD = ${THRESHOLD}, REFRACTORY_S = ${REFRACTORY_S};
+    ${PeakTimer.toString()}
+    registerProcessor('peak', class extends AudioWorkletProcessor {
+      constructor() { super(); this.timer = new PeakTimer(sampleRate); }
+      process(inputs) {
+        const ch = inputs[0][0];
+        if (ch) { const peaks = this.timer.process(ch); if (peaks.length) this.port.postMessage(peaks); }
+        return true;
+      }
+    });
+  `], { type: 'application/javascript' }));
+
   function drawWave() {
     if (!analyser) return;
     const data = new Uint8Array(analyser.fftSize);
@@ -238,15 +255,11 @@ if (typeof document !== 'undefined') {
     analyser = audioCtx.createAnalyser();
     source.connect(analyser);
     drawWave();
-    // ScriptProcessor is deprecated but universal; swap for an AudioWorklet if browsers drop it
-    const proc = audioCtx.createScriptProcessor(1024, 1, 1);
-    const timer = new PeakTimer(audioCtx.sampleRate);
-
-    proc.onaudioprocess = (e) => {
-      for (const t of timer.process(e.inputBuffer.getChannelData(0))) onPeak(t);
-    };
-    source.connect(proc);
-    proc.connect(audioCtx.destination); // required for the node to run; outputs silence
+    await audioCtx.audioWorklet.addModule(WORKLET_URL);
+    const peaks = new AudioWorkletNode(audioCtx, 'peak');
+    peaks.port.onmessage = ({ data }) => data.forEach(onPeak);
+    source.connect(peaks);
+    peaks.connect(audioCtx.destination); // keeps the node in the render graph; outputs silence
 
     try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* nice-to-have */ }
 
