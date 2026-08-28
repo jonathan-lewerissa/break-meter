@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111418">
+  <title>Break Meter · OBS overlay</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    main { text-align: left; }
+    h1 { text-align: center; }
+    p, li { color: var(--dim); font-size: 0.95rem; line-height: 1.5; }
+    ol { padding-left: 1.25rem; display: grid; gap: 0.5rem; }
+    ol ul { list-style: none; padding: 0; margin-top: 0.4rem; display: grid; gap: 0.3rem; }
+    code { background: var(--panel); padding: 0.1rem 0.35rem; border-radius: 0.3rem; color: var(--fg); font-size: 0.9em; }
+    form { display: grid; gap: 0.75rem; }
+    form label { display: flex; justify-content: space-between; align-items: center; gap: 1rem; color: var(--dim); font-size: 0.9rem; }
+    input[type=number] { width: 5.5rem; }
+    input { background: var(--panel); color: var(--fg); border: 1px solid #2c333d; border-radius: 0.5rem; padding: 0.4rem 0.6rem; font-size: 1rem; }
+    #url-row { display: flex; gap: 0.5rem; }
+    #url { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+    #copy { background: var(--accent); color: #06130b; border: none; border-radius: 0.5rem; padding: 0.4rem 1rem; font-weight: 700; cursor: pointer; }
+    .click-copy { cursor: pointer; }
+    .click-copy:hover { outline: 1px solid var(--accent); }
+    .click-copy::after { color: var(--accent); font-family: system-ui, sans-serif; }
+    .click-copy:hover::after { content: ' ⧉'; }
+    .click-copy.copied::after { content: ' ✓ copied'; }
+    #preview { color: var(--dim); font-size: 0.85rem; }
+    h2 { font-size: 1.1rem; }
+    .os { width: 1em; height: 1em; fill: currentColor; vertical-align: -0.15em; margin-right: 0.2em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>OBS overlay 🎱</h1>
+    <p>A transparent Break Meter for an OBS <strong>Browser Source</strong>: big speed readout, gap time and session best. It arms the mic as soon as it loads — no buttons.</p>
+
+    <form id="form">
+      <label>Table size
+        <select name="table">
+          <option value="7">7 ft (bar box)</option>
+          <option value="8">8 ft</option>
+          <option value="9" selected>9 ft</option>
+        </select>
+      </label>
+      <label>Game
+        <select name="rack">
+          <option value="9ball-1" selected>9-ball (1 on spot)</option>
+          <option value="9ball-9">9-ball (9 on spot)</option>
+          <option value="8ball">8-ball</option>
+          <option value="10ball">10-ball</option>
+        </select>
+      </label>
+      <label>Unit
+        <select name="unit">
+          <option value="mph" selected>mph</option>
+          <option value="kmh">km/h</option>
+          <option value="ms">m/s</option>
+          <option value="fps">ft/s</option>
+        </select>
+      </label>
+      <label>Cue ball position
+        <select name="pos">
+          <option value="left">◀ Rail</option>
+          <option value="box-left">◀ Box</option>
+          <option value="center" selected>Center</option>
+          <option value="box-right">Box ▶</option>
+          <option value="right">Rail ▶</option>
+        </select>
+      </label>
+      <label>Mic sensitivity (threshold) — lower it if the mic is far from the table
+        <input type="number" name="threshold" value="0.35" min="0.05" max="1" step="0.05">
+      </label>
+    </form>
+
+    <div>
+      <div id="url-row"><input id="url" readonly><button id="copy" type="button">Copy</button></div>
+      <a id="preview" href="overlay.html" target="_blank" rel="noopener">Preview in a new tab ↗</a>
+    </div>
+
+    <h2>Setup</h2>
+    <ol>
+      <li>Launch OBS with the <code>--enable-media-stream</code> flag — OBS blocks mic access in browser sources by default.
+        <ul>
+          <li><svg class="os" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8.5" height="8.5"/><rect x="12.5" y="3" width="8.5" height="8.5"/><rect x="3" y="12.5" width="8.5" height="8.5"/><rect x="12.5" y="12.5" width="8.5" height="8.5"/></svg> Windows: right-click the OBS shortcut → Properties, append the flag to the <em>Target</em> field.</li>
+          <li><svg class="os" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></svg> macOS: <code class="click-copy" title="Click to copy">open -a OBS --args --enable-media-stream</code>, then allow OBS the microphone in System Settings → Privacy &amp; Security.</li>
+        </ul>
+      </li>
+      <li>Add a <strong>Browser Source</strong> and paste the URL above.</li>
+      <li>Untick <strong>Shutdown source when not visible</strong> so it keeps listening between scenes.</li>
+    </ol>
+    <p>If the readout shows <strong>Mic error</strong>, the flag or the OS permission isn't in effect. The overlay uses whichever mic the OBS machine has, so put it near the table.</p>
+
+    <div id="links"><a href="./">← Break Meter</a></div>
+  </main>
+
+  <script src="app.js"></script>
+  <script>
+    'use strict';
+    const form = document.getElementById('form');
+    const urlEl = document.getElementById('url');
+    const previewEl = document.getElementById('preview');
+    const copyBtn = document.getElementById('copy');
+
+    function build() {
+      const f = new FormData(form);
+      const p = new URLSearchParams({
+        table: f.get('table'),
+        rack: f.get('rack'),
+        unit: f.get('unit'),
+        fx: presetFx(f.get('pos'), +f.get('table')).toFixed(3),
+      });
+      if (+f.get('threshold') !== THRESHOLD) p.set('threshold', f.get('threshold'));
+      const url = new URL(`overlay.html?${p}`, location.href).href;
+      urlEl.value = previewEl.href = url;
+    }
+    form.addEventListener('input', build);
+    copyBtn.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(urlEl.value);
+      copyBtn.textContent = 'Copied';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    });
+    document.querySelectorAll('.click-copy').forEach((el) =>
+      el.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(el.textContent);
+        el.classList.add('copied');
+        setTimeout(() => el.classList.remove('copied'), 1500);
+      }));
+    build();
+  </script>
+</body>
+</html>

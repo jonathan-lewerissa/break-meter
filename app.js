@@ -96,7 +96,44 @@ function bestBreak(list) {
   return list.length ? list.reduce((a, b) => (b.speedMs > a.speedMs ? b : a)) : null;
 }
 
-if (typeof document !== 'undefined') {
+// Rail break: cue ball a ball's width off the cushion, so its center sits
+// one diameter + one radius (3.375") from the rail. Box break: the break
+// box edge is where the line from each head-rail first diamond (±width/4)
+// to the foot spot crosses the head string — ±width/6, the middle third.
+// "Edge of the box" puts the ball just inside (center one radius in).
+const RAIL_INSET_IN = BALL_D_IN * 1.5;
+function presetFx(pos, size) {
+  const w = TABLES[size].width;
+  return {
+    left: RAIL_INSET_IN / w,
+    'box-left': 1 / 3 + (BALL_D_IN / 2) / w,
+    center: 0.5,
+    'box-right': 2 / 3 - (BALL_D_IN / 2) / w,
+    right: 1 - RAIL_INSET_IN / w,
+  }[pos];
+}
+
+// PeakTimer runs on the audio thread: a ScriptProcessor on the main thread
+// drops blocks when the UI stalls, and every dropped block skews later
+// timestamps by the block length. Built from source so tests keep importing
+// the same class and the SW has one less file to cache.
+function peakWorkletUrl(threshold = THRESHOLD) {
+  return URL.createObjectURL(new Blob([`
+    const THRESHOLD = ${threshold}, REFRACTORY_S = ${REFRACTORY_S};
+    ${PeakTimer.toString()}
+    registerProcessor('peak', class extends AudioWorkletProcessor {
+      constructor() { super(); this.timer = new PeakTimer(sampleRate); }
+      process(inputs) {
+        const ch = inputs[0][0];
+        if (ch) { const peaks = this.timer.process(ch); if (peaks.length) this.port.postMessage(peaks); }
+        return true;
+      }
+    });
+  `], { type: 'application/javascript' }));
+}
+
+// ponytail: overlay.html loads this file for the classes above and has no #arm
+if (typeof document !== 'undefined' && document.getElementById('arm')) {
   const armBtn = document.getElementById('arm');
   const speedEl = document.getElementById('speed');
   const speedAltEl = document.getElementById('speed-alt');
@@ -145,25 +182,9 @@ if (typeof document !== 'undefined') {
     localStorage.setItem('cue', JSON.stringify(cue));
     renderCue();
   }
-  // Rail break: cue ball a ball's width off the cushion, so its center sits
-  // one diameter + one radius (3.375") from the rail. Box break: the break
-  // box edge is where the line from each head-rail first diamond (±width/4)
-  // to the foot spot crosses the head string — ±width/6, the middle third.
-  // "Edge of the box" puts the ball just inside (center one radius in).
-  const RAIL_INSET_IN = BALL_D_IN * 1.5;
   document.querySelectorAll('#cue-presets button').forEach((b) =>
     b.addEventListener('click', () => {
-      const w = TABLES[tableSel.value].width;
-      cue = {
-        fx: {
-          left: RAIL_INSET_IN / w,
-          'box-left': 1 / 3 + (BALL_D_IN / 2) / w,
-          center: 0.5,
-          'box-right': 2 / 3 - (BALL_D_IN / 2) / w,
-          right: 1 - RAIL_INSET_IN / w,
-        }[b.dataset.pos],
-        fy: 0,
-      };
+      cue = { fx: presetFx(b.dataset.pos, +tableSel.value), fy: 0 };
       localStorage.setItem('cue', JSON.stringify(cue));
       renderCue();
     }));
@@ -205,23 +226,6 @@ if (typeof document !== 'undefined') {
   let analyser = null;
   const finder = new GapFinder();
 
-  // PeakTimer runs on the audio thread: a ScriptProcessor on the main thread
-  // drops blocks when the UI stalls, and every dropped block skews later
-  // timestamps by the block length. Built from source so tests keep importing
-  // the same class and the SW has one less file to cache.
-  const WORKLET_URL = URL.createObjectURL(new Blob([`
-    const THRESHOLD = ${THRESHOLD}, REFRACTORY_S = ${REFRACTORY_S};
-    ${PeakTimer.toString()}
-    registerProcessor('peak', class extends AudioWorkletProcessor {
-      constructor() { super(); this.timer = new PeakTimer(sampleRate); }
-      process(inputs) {
-        const ch = inputs[0][0];
-        if (ch) { const peaks = this.timer.process(ch); if (peaks.length) this.port.postMessage(peaks); }
-        return true;
-      }
-    });
-  `], { type: 'application/javascript' }));
-
   function drawWave() {
     if (!analyser) return;
     const data = new Uint8Array(analyser.fftSize);
@@ -255,7 +259,7 @@ if (typeof document !== 'undefined') {
     analyser = audioCtx.createAnalyser();
     source.connect(analyser);
     drawWave();
-    await audioCtx.audioWorklet.addModule(WORKLET_URL);
+    await audioCtx.audioWorklet.addModule(peakWorkletUrl());
     const peaks = new AudioWorkletNode(audioCtx, 'peak');
     peaks.port.onmessage = ({ data }) => data.forEach(onPeak);
     source.connect(peaks);
@@ -312,5 +316,5 @@ if (typeof document !== 'undefined') {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { PeakTimer, GapFinder, speedFromGap, breakDistanceM, addBreak, bestBreak, UNITS, TABLES, RACK_APEX_OFFSET_IN, BALL_D_M, IN_TO_M, MIN_GAP_S, MAX_GAP_S };
+  module.exports = { presetFx, PeakTimer, GapFinder, speedFromGap, breakDistanceM, addBreak, bestBreak, UNITS, TABLES, RACK_APEX_OFFSET_IN, BALL_D_M, IN_TO_M, MIN_GAP_S, MAX_GAP_S };
 }

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Break Meter overlay</title>
+  <!--
+    OBS browser source. Launch OBS with --enable-media-stream (macOS: also
+    grant OBS mic access in System Settings). Options via URL params:
+      ?table=9&rack=9ball-1&unit=mph&fx=0.5&fy=0&threshold=0.35
+    fx/fy: cue position, 0..1 (0.5,0 = center of head string). threshold:
+    lower it (e.g. 0.2) if the mic is far from the table.
+  -->
+  <style>
+    * { margin: 0; box-sizing: border-box; }
+    body {
+      background: transparent;
+      color: #fff;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, .8);
+      padding: 1rem 1.5rem;
+      width: max-content;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #speed { font-size: 6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+    #speed.flash { color: #35c46f; transition: none; }
+    #speed { transition: color 2s; }
+    #sub { font-size: 1.5rem; opacity: .8; margin-top: .25rem; }
+    #status { font-size: 1rem; opacity: .6; font-weight: 400; margin-top: .5rem; }
+    #status:empty { display: none; }
+  </style>
+</head>
+<body>
+  <div id="speed">—</div>
+  <div id="sub"></div>
+  <div id="status"></div>
+
+  <script src="app.js"></script>
+  <script>
+    'use strict';
+    const q = new URLSearchParams(location.search);
+    const table = TABLES[q.get('table')] ? +q.get('table') : 9;
+    const rack = RACK_APEX_OFFSET_IN[q.get('rack')] !== undefined ? q.get('rack') : '9ball-1';
+    const unit = UNITS[q.get('unit')] || UNITS.mph;
+    const fx = +q.get('fx') || 0.5, fy = +q.get('fy') || 0;
+    const threshold = +q.get('threshold') || THRESHOLD;
+    const distanceM = breakDistanceM(table, fx, fy, RACK_APEX_OFFSET_IN[rack]);
+
+    const speedEl = document.getElementById('speed');
+    const subEl = document.getElementById('sub');
+    const statusEl = document.getElementById('status');
+    const fmt = (ms) => `${(ms * unit.factor).toFixed(1)} ${unit.label}`;
+
+    const finder = new GapFinder();
+    let best = 0;
+
+    function onPeak(t) {
+      const gap = finder.feed(t);
+      if (gap === null) return;
+      const speedMs = speedFromGap(gap, distanceM);
+      best = Math.max(best, speedMs);
+      speedEl.textContent = fmt(speedMs);
+      subEl.textContent = `${(gap * 1000).toFixed(0)} ms · best ${fmt(best)}`;
+      speedEl.classList.add('flash');
+      requestAnimationFrame(() => requestAnimationFrame(() => speedEl.classList.remove('flash')));
+    }
+
+    async function arm() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+      const ctx = new AudioContext();
+      await ctx.audioWorklet.addModule(peakWorkletUrl(threshold));
+      const peaks = new AudioWorkletNode(ctx, 'peak');
+      peaks.port.onmessage = ({ data }) => data.forEach(onPeak);
+      ctx.createMediaStreamSource(stream).connect(peaks);
+      peaks.connect(ctx.destination); // keeps the node in the render graph; outputs silence
+      statusEl.textContent = '';
+    }
+
+    statusEl.textContent = 'Starting mic…';
+    arm().catch((err) => {
+      statusEl.textContent = `Mic error: ${err.message} — launch OBS with --enable-media-stream`;
+    });
+  </script>
+</body>
+</html>

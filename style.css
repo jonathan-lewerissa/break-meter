@@ -193,7 +193,7 @@ select {
 
 #breaks li:first-child { color: var(--fg); }
 
-#repo {
+#links, #links a {
   color: var(--dim);
   font-size: 0.8rem;
   text-decoration: none;
